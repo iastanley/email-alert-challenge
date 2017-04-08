@@ -10,6 +10,8 @@ require('dotenv').config();
 const {logger} = require('./utilities/logger');
 // these are custom errors we've created
 const {FooError, BarError, BizzError} = require('./errors');
+const {sendEmail} = require('./emailer');
+const {ALERT_FROM_EMAIL, ALERT_TO_EMAIL} = process.env;
 
 const app = express();
 
@@ -30,6 +32,23 @@ app.get('*', russianRoulette);
 // YOUR MIDDLEWARE FUNCTION should be activated here using
 // `app.use()`. It needs to come BEFORE the `app.use` call
 // below, which sends a 500 and error message to the client
+function sendErrorEmail(err, req, res, next) {
+  logger.info(`${err.name} occured.`);
+  //check err to see if it equals FooError or BarError
+  if (err instanceof FooError || err instanceof BarError) {
+    logger.info(`Attempting to send email to ${ALERT_TO_EMAIL}`);
+    const errorEmail = {
+      from: ALERT_FROM_EMAIL,
+      to: ALERT_TO_EMAIL,
+      subject: `ALERT: a ${err.name} occured!`,
+      text: `This is what we know: ${err.stack}`
+    }
+    sendEmail(errorEmail);
+  }
+  next();
+}
+
+app.use(sendErrorEmail);
 
 app.use((err, req, res, next) => {
   logger.error(err);
